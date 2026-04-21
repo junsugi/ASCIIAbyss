@@ -1,4 +1,4 @@
-﻿namespace ASCIIAbyss;
+﻿namespace Server;
 
 class Program
 {

@@ -1,0 +1,6 @@
+﻿namespace ServerCore;
+
+class Listener
+{
+
+}
