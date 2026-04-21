@@ -51,7 +51,7 @@ public abstract class Session
         // 소켓에 내용이 있고 Success 일 때
         if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
         {
-            OnReceive(args.Buffer);
+            OnReceive(new ArraySegment<byte>(args.Buffer, args.Offset, args.BytesTransferred));
 
             RegisterRecv();
         }
