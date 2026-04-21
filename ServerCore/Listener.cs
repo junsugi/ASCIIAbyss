@@ -38,5 +38,8 @@ public class Listener
             clientSession.Start(args.AcceptSocket);
             clientSession.OnConnected();
         }
+        
+        // 여기서 args 반환을 해줘야 다음 클라이언트 접속 대기
+        RegisterAccept(args);
     }
 }
