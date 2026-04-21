@@ -11,7 +11,7 @@ class Program
     {
         IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 5555);
         
-        _listener.Init(endPoint);
+        _listener.Init(endPoint, () => new ClientSession());
         
         Console.WriteLine("Listening...");
 

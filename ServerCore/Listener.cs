@@ -6,21 +6,37 @@ namespace ServerCore;
 public class Listener
 {
     private Socket _listenSocket;
+    private Func<Session> _sessionFactory;
     
-    public void Init(IPEndPoint endPoint)
+    public void Init(IPEndPoint endPoint, Func<Session> sessionFactory)
     {
         _listenSocket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);    
         _listenSocket.Bind(endPoint);
         _listenSocket.Listen(10);
+
+        _sessionFactory = sessionFactory;
         
         SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-        args.Completed += ConnectedTest;
-        
-        _listenSocket.AcceptAsync(args);
+        args.Completed += OnAcceptCompleted;
+
+        RegisterAccept(args);
     }
 
-    public void ConnectedTest(object sender, SocketAsyncEventArgs e)
+    private void RegisterAccept(SocketAsyncEventArgs args)
     {
-        Console.WriteLine("I'm here..");
+        // TODO : args 초기화 해야됨?
+       bool pending = _listenSocket.AcceptAsync(args);
+       if (!pending)
+           OnAcceptCompleted(null, args);
+    }
+
+    private void OnAcceptCompleted(object? sender, SocketAsyncEventArgs args)
+    {
+        if (args.SocketError == SocketError.Success)
+        {
+            Session clientSession = _sessionFactory.Invoke();
+            clientSession.Start(args.AcceptSocket);
+            clientSession.OnConnected();
+        }
     }
 }
