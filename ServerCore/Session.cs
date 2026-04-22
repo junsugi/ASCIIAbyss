@@ -1,12 +1,12 @@
-using System.Net;
 using System.Net.Sockets;
-using System.Text;
 
 namespace ServerCore;
 
 public abstract class Session
 {
     private Socket _socket;
+    private object _lock = new object();
+    private bool _isConnected = true;
 
     private ArraySegment<byte> _recvBuffer = new ArraySegment<byte>(new byte[65535]);
 
@@ -63,15 +63,19 @@ public abstract class Session
 
     private void RegisterSend()
     {
-        _pendingList.Clear();
-        
+        // 이미 Socket이 파괴됐는데 들어와서 sendArgs를 등록하려는 경우가 존재
+        // 커넥션이 끊어졌으면 그냥 되돌아가게 하기.
+        if (_isConnected == false)
+            return;
+
         while (_sendQueue.Count > 0)
         {
             ArraySegment<byte> buffer = _sendQueue.Dequeue();
             _pendingList.Add(buffer);
         }
+
         _sendArgs.BufferList = _pendingList;
-        
+
         try
         {
             bool pending = _socket.SendAsync(_sendArgs);
@@ -86,9 +90,20 @@ public abstract class Session
 
     private void OnSendCompleted(object? sender, SocketAsyncEventArgs args)
     {
-        if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
+        lock (_lock)
         {
-            RegisterSend();
+            if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
+            {
+                _sendArgs.BufferList = null;
+                _pendingList.Clear();
+                
+                if (_sendQueue.Count > 0)
+                    RegisterSend();
+            }
+            else
+            {
+                Disconnected();
+            }
         }
     }
 
@@ -98,15 +113,21 @@ public abstract class Session
         if (buffer.Count == 0)
             return;
 
-        _sendQueue.Enqueue(buffer);
-
-        RegisterSend();
+        lock (_lock)
+        {
+            _sendQueue.Enqueue(buffer);
+            if (_pendingList.Count == 0)
+                RegisterSend();
+        }
     }
 
     private void Disconnected()
     {
+        if (Interlocked.Exchange(ref _isConnected, false) == false)
+            return;
+        
         Console.WriteLine($"{GetType().Name} disconnected");
         _socket.Shutdown(SocketShutdown.Both);
         _socket.Close();
-    } 
+    }
 }
