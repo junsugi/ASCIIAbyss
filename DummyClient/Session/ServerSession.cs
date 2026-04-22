@@ -1,14 +1,16 @@
 using System.Text;
 using ServerCore;
 
-namespace Server;
+namespace DummyClient;
 
-public class ClientSession : Session
+public class ServerSession : Session
 {
+    public int DummyId { get; set; }
     private static readonly int HeaderSize = 2;
+
     public override void OnConnected()
     {
-        Console.WriteLine("Connected to server");
+        //Console.WriteLine($"OnConnected : {endPoint}");
     }
 
     public override void OnReceive(ArraySegment<byte> buffer)
@@ -30,7 +32,7 @@ public class ClientSession : Session
                 
                 // 받아서 Console 찍기
                 string data = Encoding.UTF8.GetString(buffer.Array, buffer.Offset, buffer.Count);
-                Console.WriteLine(data);
+                Console.WriteLine($"{data}");
                 // echo
                 Send(buffer);
                 // 무한루프 탈출
