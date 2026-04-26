@@ -19,7 +19,8 @@ public abstract class Session
     public abstract void OnConnected();
     public abstract void OnReceive(ArraySegment<byte> buffer);
     public abstract void OnSend(ArraySegment<byte> buffer);
-
+    public abstract void OnDisconnected();
+    
     public void Start(Socket socket)
     {
         _socket = socket;
@@ -126,6 +127,7 @@ public abstract class Session
         if (Interlocked.Exchange(ref _isConnected, false) == false)
             return;
         
+        OnDisconnected();
         Console.WriteLine($"{GetType().Name} disconnected");
         _socket.Shutdown(SocketShutdown.Both);
         _socket.Close();
