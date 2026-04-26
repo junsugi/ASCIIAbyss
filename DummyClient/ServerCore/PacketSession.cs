@@ -1,4 +1,6 @@
-namespace ServerCore;
+using ServerCore;
+
+namespace DummyClient;
 
 public abstract class PacketSession : Session
 {

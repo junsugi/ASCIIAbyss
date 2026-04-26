@@ -1,6 +1,5 @@
 using Google.Protobuf;
 using Google.Protobuf.Protocol;
-using Server;
 using ServerCore;
 
 namespace DummyClient.Packet;
