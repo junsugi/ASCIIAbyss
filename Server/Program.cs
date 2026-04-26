@@ -1,4 +1,5 @@
 ﻿using System.Net;
+using Server.Game;
 using ServerCore;
 
 namespace Server;
@@ -10,8 +11,10 @@ class Program
     static void Main(string[] args)
     {
         IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 5555);
+
+        GameRoomManager.Instance.Add(1);
         
-        _listener.Init(endPoint, () => new ClientSession());
+        _listener.Init(endPoint, () => SessionManager.Instance.Generate());
         
         Console.WriteLine("Listening...");
 
