@@ -1,48 +1,99 @@
 ﻿using System.Net;
-using System.Net.Sockets;
 using System.Text;
+using DummyClient.View;
+using Google.Protobuf.Protocol;
+using Spectre.Console;
 
 namespace DummyClient;
 
 class Program
 {
-    static void Main(string[] args)
+    #region Spectre.Console
+
+    static async Task Main(string[] args)
     {
         IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 5555);
-
         Connector connector = new Connector();
-        connector.Connect(endPoint, () => { return SessionManager.Instance.Generate(); }, 10);
+        ServerSession session = SessionManager.Instance.Generate();
 
-        Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-        socket.Connect(endPoint);
-    
-        Thread t = new Thread(() => ReceiveLoop(socket));
-        t.Start();
+        AnsiConsole.MarkupLine(ASCIIView.Instance.Logo());
+        AnsiConsole.Status().Start("Loading...", ctx =>
+        {
+            connector.Connect(endPoint, session);
+            Thread.Sleep(2000);
+        });
         
-        // 2. 메인 스레드는 여기서 계속 키보드 입력을 대기
-        while (true)
+        if (session.IsConnected)
         {
-            string message = Console.ReadLine(); // 여기서 멈춰서 입력을 대기
-            if (string.IsNullOrEmpty(message)) continue;
+            while (true)
+            {
+                List<string> menuChoices = new List<string>();
+                if (session.UIState == PlayerClientUIState.UiLogin)
+                {
+                    menuChoices.Add("회원가입");
+                    menuChoices.Add("로그인");
+                }
+                else if (session.UIState == PlayerClientUIState.UiLobby)
+                {
+                    menuChoices.Add("로비");
+                }
+                
+                var menuInput = AnsiConsole.Prompt(
+                    new SelectionPrompt<string>()
+                        .Title("[bold]메뉴[/]를 선택해주세요.")
+                        .MoreChoicesText("[grey](더 보려면 위아래로 움직이세요)[/]")
+                        .AddChoices(menuChoices));
 
-            byte[] body = Encoding.UTF8.GetBytes(message);
-            byte[] packet = new byte[body.Length];
-            Array.Copy(body, 0, packet, 0, body.Length);
+                AnsiConsole.MarkupLine($"{menuInput}을 선택하였습니다.\n");
 
-            socket.Send(packet); // 서버로 전송!
+                string email = "";
+                string password = "";
+
+                switch (menuInput)
+                {
+                    case "회원가입" when session.UIState == PlayerClientUIState.UiLogin:
+                        email = AnsiConsole.Ask<string>("원하시는 [green]이메일[/]을 입력해주세요. : ");
+                        password = AnsiConsole.Prompt(
+                            new TextPrompt<string>("원하시는 [bold green]비밀번호[/]를 입력하세요:")
+                                .PromptStyle("red")
+                                .Secret('*'));
+                        
+                        session.SignUp(email, password);
+                        
+                        AnsiConsole.MarkupLine("[bold blue]회원가입[/]이 완료되었습니다! \n");
+                        break;
+                    case "로그인" when session.UIState == PlayerClientUIState.UiLogin:
+                        email = AnsiConsole.Ask<string>("[green]이메일[/]을 입력해주세요. : ");
+                        password = AnsiConsole.Prompt(
+                            new TextPrompt<string>("[bold green]비밀번호[/]를 입력하세요:")
+                                .PromptStyle("red")
+                                .Secret('*'));
+                        // account가 Null인지 아닌지에 따라 다음 스텝
+                        try
+                        {
+                            Player player = await session.SignInAsync(email, password);
+                            if (session.UIState == PlayerClientUIState.UiLobby)
+                            {
+                                AnsiConsole.MarkupLine($"[bold blue]{player.DisplayName}[/]이 로그인 하셨습니다! \n");
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e.Message);
+                        }
+                        break;
+                    case "로비" when session.UIState == PlayerClientUIState.UiLobby:
+                        AnsiConsole.MarkupLine($"[bold blue]아직 공사중[/] \n");
+                        break;
+                    case "종료":
+                        AnsiConsole.MarkupLine($"게임을 [bold red]종료[/]합니다.");
+                        break;
+                    default:
+                        break;
+                }
+            }
         }
     }
 
-    static void ReceiveLoop(Socket socket)
-    {
-        byte[] recvBuffer = new byte[65535];
-        while (true)
-        {
-            int nRecv = socket.Receive(recvBuffer); // 서버가 보낼 때까지 여기서 대기.
-            if (nRecv <= 0) break;
-
-            string result = Encoding.UTF8.GetString(recvBuffer, 0, nRecv);
-            Console.WriteLine($"[From Server]: {result}");
-        }
-    }
+    #endregion
 }

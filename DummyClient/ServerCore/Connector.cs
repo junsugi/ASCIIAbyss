@@ -6,28 +6,21 @@ namespace DummyClient;
 
 public class Connector
 {
-    private Func<ServerSession> _sessionFactory;
-    public void Connect(EndPoint endPoint, Func<ServerSession> sessionFactory, int count = 1)
+    public void Connect(EndPoint endPoint, ServerSession session)
     {
-        for (int i = 0; i < count; i++)
-        {
-            Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
-            _sessionFactory = sessionFactory;
-            
-            SocketAsyncEventArgs args = new SocketAsyncEventArgs();
-            args.Completed += OnConnectCompleted;
-            args.RemoteEndPoint = endPoint;
-            args.UserToken = socket;
+        Socket socket = new Socket(endPoint.AddressFamily, SocketType.Stream, ProtocolType.Tcp);
 
-            RegisterConnect(args);
-            
-            Thread.Sleep(100);
-        }
+        SocketAsyncEventArgs args = new SocketAsyncEventArgs();
+        args.Completed += OnConnectCompleted;
+        args.RemoteEndPoint = endPoint;
+        args.UserToken = (socket, session);
+
+        RegisterConnect(args);
     }
 
     private void RegisterConnect(SocketAsyncEventArgs args)
     {
-        Socket socket = args.UserToken as Socket;
+        var (socket, _) = ((Socket, ServerSession))args.UserToken;
         if (socket == null)
             return;
 
@@ -49,7 +42,7 @@ public class Connector
         {
             if (args.SocketError == SocketError.Success)
             {
-                Session session = _sessionFactory.Invoke();
+                var (_, session) = ((Socket, ServerSession))args.UserToken;
                 session.Start(args.ConnectSocket);
                 session.OnConnected();
             }
