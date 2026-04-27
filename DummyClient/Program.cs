@@ -1,5 +1,4 @@
 ﻿using System.Net;
-using System.Text;
 using DummyClient.View;
 using Google.Protobuf.Protocol;
 using Spectre.Console;
@@ -35,6 +34,7 @@ class Program
                 }
                 else if (session.UIState == PlayerClientUIState.UiLobby)
                 {
+                    menuChoices.Add("방만들기");
                     menuChoices.Add("로비");
                 }
                 
@@ -83,7 +83,27 @@ class Program
                         }
                         break;
                     case "로비" when session.UIState == PlayerClientUIState.UiLobby:
-                        AnsiConsole.MarkupLine($"[bold blue]아직 공사중[/] \n");
+                        Dictionary<int, GameRoom> gameRooms = await session.LobbyAsync();
+                        if (gameRooms.Count == 0)
+                        {
+                            AnsiConsole.MarkupLine("생성된 방이 없습니다.");
+                        }
+                        else
+                        {
+                            var lobbyInput = AnsiConsole.Prompt<GameRoom>(
+                                new SelectionPrompt<GameRoom>()
+                                    .PageSize(5)
+                                    .Title("[bold]메뉴[/]를 선택해주세요.")
+                                    .MoreChoicesText("[grey](더 보려면 위아래로 움직이세요)[/]")
+                                    .AddChoices(gameRooms.Values)
+                                    .UseConverter(room => $"{room.displayName} - {room.playerCount} / 4"));
+                        }
+                        
+                        break;
+                    case "방만들기" when session.UIState == PlayerClientUIState.UiLobby:
+                        string displayName = AnsiConsole.Ask<string>("[green]방 이름[/]을 입력해주세요. : ");
+                        GameRoom gameRoom = await session.CreateRoomAsync(displayName);
+                        AnsiConsole.MarkupLine($"{gameRoom.Id} / {gameRoom.displayName}");
                         break;
                     case "종료":
                         AnsiConsole.MarkupLine($"게임을 [bold red]종료[/]합니다.");
