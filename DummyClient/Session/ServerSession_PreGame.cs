@@ -1,15 +1,18 @@
 using Google.Protobuf.Protocol;
-using ServerCore;
 
 namespace DummyClient;
 
 public partial class ServerSession : PacketSession
 {
-    private TaskCompletionSource<Player> _tcs =
-        new TaskCompletionSource<Player>(TaskCreationOptions.RunContinuationsAsynchronously);
-    
+    private TaskCompletionSource<Player> _playerTcs;
+
+    private TaskCompletionSource<Dictionary<int, GameRoom>> _gameRoomsTcs;
+    private TaskCompletionSource<GameRoom> _gameRoomTcs;
+
     private object _lock = new object();
-    
+
+    private Dictionary<int, GameRoom> _gameRooms = new Dictionary<int, GameRoom>();
+
     public void SignUp(string email, string password)
     {
         C_SignUp signUpPacket = new C_SignUp();
@@ -27,15 +30,18 @@ public partial class ServerSession : PacketSession
             return Task.FromException<Player>(
                 new InvalidOperationException("로그인 불가"));
 
+        _playerTcs = new TaskCompletionSource<Player>(TaskCreationOptions.RunContinuationsAsynchronously);
+
         C_SignIn signInPacket = new C_SignIn()
         {
             AccountInfo = new Account().Mapper(email, password)
         };
         Send(signInPacket);
+
         lock (_lock)
         {
             UIState = PlayerClientUIState.UiLogin;
-            return _tcs.Task;
+            return _playerTcs.Task;
         }
     }
 
@@ -43,6 +49,46 @@ public partial class ServerSession : PacketSession
     {
         Interlocked.Exchange(ref Player, player);
         setUIStatue(PlayerClientUIState.UiLobby);
-        _tcs.TrySetResult(player);
+        _playerTcs.TrySetResult(player);
+    }
+
+    // 현재 생성된 게임룸 리스트 서버로부터 받아오기
+    public Task<Dictionary<int, GameRoom>> LobbyAsync()
+    {
+        C_GameRoomList gameRoomListPacket = new C_GameRoomList();
+        _gameRoomsTcs = new TaskCompletionSource<Dictionary<int, GameRoom>>();
+        Send(gameRoomListPacket);
+
+        return _gameRoomsTcs.Task;
+    }
+
+    public void CompletedLobby(Dictionary<int, GameRoom> gameRooms)
+    {
+        lock (_lock)
+        {
+            _gameRooms = gameRooms;
+            _gameRoomsTcs.TrySetResult(gameRooms);
+        }
+    }
+
+    public Task<GameRoom> CreateRoomAsync(string displayName)
+    {
+        _gameRoomTcs = new TaskCompletionSource<GameRoom>();
+        C_CreateGameRoom createRoomPacket = new C_CreateGameRoom()
+        {
+            DisplayName = displayName
+        };
+        Send(createRoomPacket);
+
+        return _gameRoomTcs.Task;
+    }
+
+    public void CompletedCreateRoom(GameRoom gameRoom)
+    {
+        lock (_lock)
+        {
+            _gameRooms.Add(gameRoom.Id, gameRoom);
+            _gameRoomTcs.TrySetResult(gameRoom);
+        }
     }
 }
