@@ -1,6 +1,5 @@
 using Google.Protobuf;
 using Google.Protobuf.Protocol;
-using ServerCore;
 
 namespace DummyClient.Packet;
 
@@ -30,5 +29,34 @@ public class PacketHandler
 
         // Async/Await 문법으로 바꾸니까 기존의 문제점도 해결됨.
         serverSession.CompletedSignIn(player);
+    }
+
+    public static void S_GameRoomListHandler(PacketSession session, IMessage packet)
+    {
+        ServerSession serverSession = (ServerSession)session;
+        S_GameRoomList gameRoomListPacket = (S_GameRoomList)packet;
+        Dictionary<int, GameRoom> gameRooms = gameRoomListPacket.GameRoom
+            .ToDictionary(room => room.Id, room => new GameRoom()
+            {
+                Id = room.Id,
+                displayName = room.RoomName,
+                playerCount = room.PlayerCount,
+            });
+
+        serverSession.CompletedLobby(gameRooms);
+    }
+
+    public static void S_CreateGameRoomHandler(PacketSession session, IMessage packet)
+    {
+        ServerSession serverSession = (ServerSession)session;
+        S_CreateGameRoom createGameRoomPacket = (S_CreateGameRoom)packet;
+        
+        // GameRoomManager에서 GameRoom을 생성해서 넘겨주는게 맞는거 같음.
+        GameRoom gameRoom = new GameRoom();
+        gameRoom.Id = createGameRoomPacket.GameRoom.Id;
+        gameRoom.displayName = createGameRoomPacket.GameRoom.RoomName;
+        gameRoom.playerCount = createGameRoomPacket.GameRoom.PlayerCount;
+        
+        serverSession.CompletedCreateRoom(gameRoom);
     }
 }

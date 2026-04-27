@@ -15,7 +15,7 @@ public class Player
 
     private object _lock = new object();
 
-    public ProtoPlayer Mapper()
+    public ProtoPlayer MapperToProto()
     {
         ProtoPlayer protoPlayer = new ProtoPlayer();
         protoPlayer.DisplayName = DisplayName;
@@ -23,6 +23,17 @@ public class Player
         protoPlayer.Id = PlayerId;
             
         return protoPlayer;
+    }
+
+    public Player MapperToPlayer(ProtoPlayer protoPlayer)
+    {
+        Player player = new Player();
+        player.DisplayName = protoPlayer.DisplayName;
+        player.Email = protoPlayer.Email;
+        player.PlayerId = protoPlayer.Id;
+        player.HP = protoPlayer.Hp;
+
+        return player;
     }
 
     public void OnDamaged(int damage)
