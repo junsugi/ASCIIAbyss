@@ -20,9 +20,15 @@ public class ServerPacketManager
     private void Register()
     {
         _onRecv.Add((ushort) MsgId.CSignUp, MakePacket<C_SignUp>);
-        _handler.Add((ushort) MsgId.CSignUp, PacketHandler.C_SignUp);
+        _handler.Add((ushort) MsgId.CSignUp, PacketHandler.C_SignUpHandler);
         _onRecv.Add((ushort) MsgId.CSignIn, MakePacket<C_SignIn>);
-        _handler.Add((ushort) MsgId.CSignIn, PacketHandler.C_SignIn);
+        _handler.Add((ushort) MsgId.CSignIn, PacketHandler.C_SignInHandler);
+        _onRecv.Add((ushort) MsgId.CEnterGame, MakePacket<C_EnterGame>);
+        _handler.Add((ushort) MsgId.CEnterGame, PacketHandler.C_EnterGameHandler);
+        _onRecv.Add((ushort) MsgId.CGameRoomList, MakePacket<C_GameRoomList>);
+        _handler.Add((ushort) MsgId.CGameRoomList, PacketHandler.C_GameRoomListHandler);
+        _onRecv.Add((ushort) MsgId.CCreateGameRoom, MakePacket<C_CreateGameRoom>);
+        _handler.Add((ushort) MsgId.CCreateGameRoom, PacketHandler.C_CreateGameRoomHandler);
     }
     
     public void OnConnectedPacket(ClientSession clientSession)
