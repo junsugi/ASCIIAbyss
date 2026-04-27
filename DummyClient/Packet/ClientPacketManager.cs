@@ -28,6 +28,10 @@ public class ClientPacketManager
         _handler.Add((ushort)MsgId.SSignUp, PacketHandler.S_SignUpHandler);
         _onRecv.Add((ushort)MsgId.SSignIn, MakePacket<S_SignIn>);
         _handler.Add((ushort)MsgId.SSignIn, PacketHandler.S_SignInHandler);
+        _onRecv.Add((ushort)MsgId.SGameRoomList, MakePacket<S_GameRoomList>);
+        _handler.Add((ushort)MsgId.SGameRoomList, PacketHandler.S_GameRoomListHandler);
+        _onRecv.Add((ushort)MsgId.SCreateGameRoom, MakePacket<S_CreateGameRoom>);
+        _handler.Add((ushort)MsgId.SCreateGameRoom, PacketHandler.S_CreateGameRoomHandler);
     }
 
     public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer)
