@@ -12,8 +12,6 @@ class Program
     {
         IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 5555);
 
-        GameRoomManager.Instance.Add(1);
-        
         _listener.Init(endPoint, () => SessionManager.Instance.Generate());
         
         Console.WriteLine("Listening...");
