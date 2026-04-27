@@ -9,20 +9,10 @@ public class GameRoomManager
     private object _lock = new object();
     private int _roomId = 0;
 
-    public GameRoom Add(int mapId)
+    private GameRoomManager()
     {
-        lock (_lock)
-        {
-            GameRoom room = new GameRoom();
-            room.Init();
-
-            room.RoomId = _roomId++;
-            _rooms.Add(_roomId, room);
-
-            return room;
-        }
     }
-    
+
     public GameRoom Find(int roomId)
     {
         GameRoom room = null;
@@ -30,5 +20,24 @@ public class GameRoomManager
             return room;
 
         return null;
+    }
+
+    public GameRoom MakeGameRoom(string gameRoomDisplayName)
+    {
+        GameRoom gameRoom = new GameRoom();
+        gameRoom.RoomId = GetHashCode();
+        gameRoom.DisplayName = gameRoomDisplayName;
+        gameRoom.playerCount = 1;
+
+        lock (_lock)
+        {
+            _rooms.Add(gameRoom.RoomId, gameRoom);
+            return gameRoom;
+        }
+    }
+
+    public Dictionary<int, GameRoom> FindAll()
+    {
+        return _rooms;
     }
 }
