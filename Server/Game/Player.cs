@@ -1,6 +1,3 @@
-using System.Runtime.CompilerServices;
-using Google.Protobuf;
-using Google.Protobuf.Protocol;
 using ProtoPlayer = Google.Protobuf.Protocol.Player;
 
 namespace Server.Game;
@@ -14,7 +11,21 @@ public class Player
     public string Email { get; set; }
 
     private object _lock = new object();
+    
+    public Player()
+    {}
 
+    public Player(ProtoPlayer player)
+    {
+        if (player == null)
+            return;
+        
+        PlayerId = player.Id;
+        DisplayName = player.DisplayName;
+        HP = player.Hp;
+        Email = player.Email;
+    }
+    
     public ProtoPlayer MapperToProto()
     {
         ProtoPlayer protoPlayer = new ProtoPlayer();
