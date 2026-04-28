@@ -19,30 +19,34 @@ public class GameRoom
         Map.LoadMap();
     }
 
-    public void EnterGame(int roomId, Player player)
+    public void EnterGame(Player player)
     {
         if (player == null)
-            return;
+            throw new Exception("Player is null");
         
         _players.Add(player.PlayerId, player);
         
         // 본인한테 들어왔다고 전송
         S_EnterGame enterPacket = new S_EnterGame();
         enterPacket.Player = player.MapperToProto();
+        enterPacket.RoomId = RoomId;
         player.Session.Send(enterPacket);
-        Console.WriteLine($"{player.PlayerId} : EnterGame");
         
         // 현재 같은 룸에 있는 플레이어들한테 전송
         S_Spawn spawnPacket = new S_Spawn();
         // 지금은 플레이어밖에 스폰데이터가 없는데, 투사체 혹은 몬스터들을 같이 보내줘야할 경우도 존재?
         spawnPacket.Player.Add(player.MapperToProto());
-        BroadCast(spawnPacket);
+        spawnPacket.RoomId = RoomId;
+        BroadCast(spawnPacket, player);
     }
 
-    private void BroadCast(S_Spawn spawnPacket)
+    private void BroadCast(S_Spawn spawnPacket, Player exceptPlayer)
     {
         foreach (Player p in _players.Values)
         {
+            if (p == exceptPlayer)
+                continue;
+            Console.WriteLine($"Broadcast target playerId={p.PlayerId}, name={p.DisplayName}, sessionId={p.Session?.SessionId}");
             p.Session.Send(spawnPacket);
         }
     }
