@@ -1,5 +1,4 @@
 using System.Net.Sockets;
-using Google.Protobuf;
 
 namespace ServerCore;
 
@@ -9,7 +8,7 @@ public abstract class Session
     private object _lock = new object();
     private bool _isConnected = true;
 
-    private ArraySegment<byte> _recvBuffer = new ArraySegment<byte>(new byte[65535]);
+    private RecvBuffer _recvBuffer = new RecvBuffer(65535);
 
     private Queue<ArraySegment<byte>> _sendQueue = new Queue<ArraySegment<byte>>();
     List<ArraySegment<byte>> _pendingList = new List<ArraySegment<byte>>();
@@ -18,10 +17,10 @@ public abstract class Session
     private SocketAsyncEventArgs _sendArgs = new SocketAsyncEventArgs();
 
     public abstract void OnConnected();
-    public abstract void OnReceive(ArraySegment<byte> buffer);
+    public abstract int OnReceive(ArraySegment<byte> buffer);
     public abstract void OnSend(ArraySegment<byte> buffer);
     public abstract void OnDisconnected();
-    
+
     public void Start(Socket socket)
     {
         _socket = socket;
@@ -34,7 +33,13 @@ public abstract class Session
 
     private void RegisterRecv()
     {
-        _recvArgs.SetBuffer(_recvBuffer.Array, _recvBuffer.Offset, _recvBuffer.Count);
+        if (_isConnected == false)
+            return;
+
+        _recvBuffer.Clean();
+        ArraySegment<byte> segment = _recvBuffer.WriteSegment;
+        _recvArgs.SetBuffer(segment.Array, segment.Offset, segment.Count);
+        Console.WriteLine($"RegisterRecv offset={segment.Offset}, count={segment.Count}, dataSize={_recvBuffer.DataSize}");
 
         try
         {
@@ -53,9 +58,38 @@ public abstract class Session
         // 소켓에 내용이 있고 Success 일 때
         if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
         {
-            OnReceive(new ArraySegment<byte>(args.Buffer, args.Offset, args.BytesTransferred));
+            try
+            {
+                Console.WriteLine($"OnRecvCompleted bytes={args.BytesTransferred}, socketError={args.SocketError}");
+                // Write 커서 이동
+                if (_recvBuffer.OnWrite(args.BytesTransferred) == false)
+                {
+                    Disconnected();
+                    return;
+                }
 
-            RegisterRecv();
+                int processLen = OnReceive(_recvBuffer.ReadSegment);
+                Console.WriteLine($"After OnReceive processLen={processLen}, dataSize={_recvBuffer.DataSize}");
+                if (processLen < 0 || _recvBuffer.DataSize < processLen)
+                {
+                    Disconnected();
+                    return;
+                }
+
+                if (_recvBuffer.OnRead(processLen) == false)
+                {
+                    Disconnected();
+                    return;
+                }
+                Console.WriteLine($"After OnRead processLen={processLen}, dataSize={_recvBuffer.DataSize}");
+
+                Console.WriteLine("Before RegisterRecv");
+                RegisterRecv();
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+            }
         }
         else
         {
@@ -96,11 +130,19 @@ public abstract class Session
         {
             if (args.BytesTransferred > 0 && args.SocketError == SocketError.Success)
             {
-                _sendArgs.BufferList = null;
-                _pendingList.Clear();
-                
-                if (_sendQueue.Count > 0)
-                    RegisterSend();
+                try
+                {
+                    Console.WriteLine($"OnSendCompleted bytes={args.BytesTransferred}, socketError={args.SocketError}");
+                    _sendArgs.BufferList = null;
+                    _pendingList.Clear();
+
+                    if (_sendQueue.Count > 0)
+                        RegisterSend();
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e.ToString());
+                }
             }
             else
             {
@@ -127,8 +169,9 @@ public abstract class Session
     {
         if (Interlocked.Exchange(ref _isConnected, false) == false)
             return;
-        
+
         OnDisconnected();
+        Console.WriteLine("Disconnected called");
         Console.WriteLine($"{GetType().Name} disconnected");
         _socket.Shutdown(SocketShutdown.Both);
         _socket.Close();

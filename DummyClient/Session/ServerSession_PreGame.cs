@@ -1,3 +1,4 @@
+using DummyClient.Room;
 using Google.Protobuf.Protocol;
 
 namespace DummyClient;
@@ -10,8 +11,6 @@ public partial class ServerSession : PacketSession
     private TaskCompletionSource<GameRoom> _gameRoomTcs;
 
     private object _lock = new object();
-
-    private Dictionary<int, GameRoom> _gameRooms = new Dictionary<int, GameRoom>();
 
     public void SignUp(string email, string password)
     {
@@ -66,14 +65,14 @@ public partial class ServerSession : PacketSession
     {
         lock (_lock)
         {
-            _gameRooms = gameRooms;
+            GameRoomManager.Instance.AddAll(gameRooms);
             _gameRoomsTcs.TrySetResult(gameRooms);
         }
     }
 
     public Task<GameRoom> CreateRoomAsync(string displayName)
     {
-        _gameRoomTcs = new TaskCompletionSource<GameRoom>();
+        _gameRoomTcs = new TaskCompletionSource<GameRoom>(TaskCreationOptions.RunContinuationsAsynchronously);
         C_CreateGameRoom createRoomPacket = new C_CreateGameRoom()
         {
             DisplayName = displayName
@@ -87,7 +86,32 @@ public partial class ServerSession : PacketSession
     {
         lock (_lock)
         {
-            _gameRooms.Add(gameRoom.Id, gameRoom);
+            GameRoomManager.Instance.Add(gameRoom);
+            _gameRoomTcs.TrySetResult(gameRoom);
+        }
+    }
+
+    public Task<GameRoom> EnterGame(int roomId, Player player)
+    {
+        _gameRoomTcs = new TaskCompletionSource<GameRoom>(TaskCreationOptions.RunContinuationsAsynchronously);
+        
+        if (roomId < 0 || player == null)
+            throw new Exception($"roomId={roomId}, player={player} is not found");
+        
+        GameRoom gameRoom = GameRoomManager.Instance.Find(roomId);
+        
+        C_EnterGame enterGamePacket = new C_EnterGame();
+        enterGamePacket.RoomId = gameRoom.Id;
+        enterGamePacket.Player = player.Mapper();
+        Send(enterGamePacket);
+        
+        return _gameRoomTcs.Task;
+    }
+
+    public void CompletedEnterGame(GameRoom gameRoom)
+    {
+        lock (_lock)
+        {
             _gameRoomTcs.TrySetResult(gameRoom);
         }
     }

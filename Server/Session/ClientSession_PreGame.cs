@@ -7,15 +7,20 @@ namespace Server;
 
 public partial class ClientSession : PacketSession
 {
+    private Player _player { get; set; }
+
     // TODO: 패킷을 몰라야한다.
     public void HandleSignUp(C_SignUp packet)
     {
         // 회원가입 시작
         string email = packet.AccountInfo.Email;
         string password = packet.AccountInfo.Password;
-        bool isSuccess = AccountService.Instance.SignUp(email, password);
-        if (isSuccess)
+        Account account = AccountService.Instance.SignUp(email, password);
+        if (account != null)
+        {
+            PlayerManager.Instance.Add(account, this);
             Send(new S_SignUp());
+        }
     }
 
     // TODO: 패킷을 몰라야한다.
@@ -23,12 +28,15 @@ public partial class ClientSession : PacketSession
     {
         string email = packet.AccountInfo.Email;
         string password = packet.AccountInfo.Password;
-        
+
         SignInResult result = AccountService.Instance.SignIn(email, password);
         if (result != null)
         {
             S_SignIn signInPacket = new S_SignIn();
-            signInPacket.Player = result.Player.MapperToProto();
+            _player = PlayerManager.Instance.FindByEmail(result.Player.Email);
+            _player.Session = this;
+            Console.WriteLine($"SignIn bind playerId={_player.PlayerId}, name={_player.DisplayName}, sessionId={SessionId}");
+            signInPacket.Player = _player.MapperToProto();
             Send(signInPacket);
         }
     }
@@ -44,7 +52,7 @@ public partial class ClientSession : PacketSession
             Send(createGamePacket);
         }
     }
-    
+
     public void HandleGameRoomList()
     {
         Dictionary<int, GameRoom> gameRooms = GameRoomManager.Instance.FindAll();
@@ -53,17 +61,12 @@ public partial class ClientSession : PacketSession
         gameRoomListPacket.GameRoom.AddRange(gameRooms.Values.Select(gameRoom => gameRoom.MapperToProto(gameRoom)));
         Send(gameRoomListPacket);
     }
-    
-    // TODO: 패킷을 몰라야한다.
-    public void HandleEnterGame(C_EnterGame enterGamePacket)
+
+    public void HandleEnterGame(int roomId, Player player)
     {
-        // 게임 룸에 입장
-        Player player = new Player();
-        player = player.MapperToPlayer(enterGamePacket.Player);
-        
-        int roomId = enterGamePacket.RoomId;
-        GameRoom room = GameRoomManager.Instance.Find(roomId);
-        if (room != null)
-            room.EnterGame(roomId, player);
+        // 상태체크
+        // 여러가지 상태 로드
+        GameRoomManager.Instance.EnterGame(roomId, player);
+        // 방입장으로 상태 변경
     }
 }

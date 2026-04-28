@@ -4,7 +4,7 @@ public abstract class PacketSession : Session
 {
     private readonly int HeaderSize = 4;
 
-    public override void OnReceive(ArraySegment<byte> buffer)
+    public sealed override int OnReceive(ArraySegment<byte> buffer)
     {
         int processLength = 0;
 
@@ -23,6 +23,8 @@ public abstract class PacketSession : Session
             processLength += dataSize;
             buffer = new ArraySegment<byte>(buffer.Array, buffer.Offset + dataSize, buffer.Count - dataSize);
         }
+        
+        return processLength;
     }
     
     public abstract void OnRecvPacket(ArraySegment<byte> buffer);

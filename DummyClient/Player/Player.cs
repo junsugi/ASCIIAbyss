@@ -12,6 +12,21 @@ public class Player
 
     private object _lock = new object();
 
+    public Player()
+    {}
+    
+    public Player(ProtoPlayer player)
+    {
+        if (player == null)
+            return;
+        
+        PlayerId = player.Id;
+        DisplayName = player.DisplayName;
+        HP = player.Hp;
+        Email = player.Email;
+    }
+
+    
     public ProtoPlayer Mapper()
     {
         ProtoPlayer protoPlayer = new ProtoPlayer();
