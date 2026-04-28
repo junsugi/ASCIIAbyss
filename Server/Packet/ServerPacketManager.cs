@@ -23,12 +23,12 @@ public class ServerPacketManager
         _handler.Add((ushort) MsgId.CSignUp, PacketHandler.C_SignUpHandler);
         _onRecv.Add((ushort) MsgId.CSignIn, MakePacket<C_SignIn>);
         _handler.Add((ushort) MsgId.CSignIn, PacketHandler.C_SignInHandler);
-        _onRecv.Add((ushort) MsgId.CEnterGame, MakePacket<C_EnterGame>);
-        _handler.Add((ushort) MsgId.CEnterGame, PacketHandler.C_EnterGameHandler);
         _onRecv.Add((ushort) MsgId.CGameRoomList, MakePacket<C_GameRoomList>);
         _handler.Add((ushort) MsgId.CGameRoomList, PacketHandler.C_GameRoomListHandler);
         _onRecv.Add((ushort) MsgId.CCreateGameRoom, MakePacket<C_CreateGameRoom>);
         _handler.Add((ushort) MsgId.CCreateGameRoom, PacketHandler.C_CreateGameRoomHandler);
+        _onRecv.Add((ushort) MsgId.CEnterGame, MakePacket<C_EnterGame>);
+        _handler.Add((ushort) MsgId.CEnterGame, PacketHandler.C_EnterGameHandler);
     }
     
     public void OnConnectedPacket(ClientSession clientSession)
@@ -54,7 +54,6 @@ public class ServerPacketManager
 
     private void MakePacket<T>(PacketSession session, ArraySegment<byte> buffer, ushort id) where T : IMessage, new()
     {
-        Console.WriteLine($"Buffer Offset: {buffer.Offset}, Count: {buffer.Count}");
         //C_EnterGame 패킷 생성
         T packet = new T();
         // 헤더 파싱한 부분 빼고

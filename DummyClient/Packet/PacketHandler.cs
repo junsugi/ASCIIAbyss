@@ -1,3 +1,4 @@
+using DummyClient.Room;
 using Google.Protobuf;
 using Google.Protobuf.Protocol;
 
@@ -58,5 +59,39 @@ public class PacketHandler
         gameRoom.playerCount = createGameRoomPacket.GameRoom.PlayerCount;
         
         serverSession.CompletedCreateRoom(gameRoom);
+    }
+
+    public static void S_EnterGameHandler(PacketSession session, IMessage packet)
+    {
+        ServerSession serverSession = (ServerSession)session;
+        S_EnterGame enterGamePacket = (S_EnterGame)packet;
+        
+        int roomId = enterGamePacket.RoomId;
+        Player player = new Player(enterGamePacket.Player);
+        
+        GameRoom gameRoom = GameRoomManager.Instance.EnterGame(roomId, player);
+        
+        serverSession.CompletedEnterGame(gameRoom);
+    }
+
+    public static void S_SpawnHandler(PacketSession session, IMessage packet)
+    {
+        ServerSession serverSession = (ServerSession)session;
+        S_Spawn spawnPacket = (S_Spawn)packet;
+        Console.WriteLine($"S_SpawnHandler roomId={spawnPacket.RoomId}, playerCount={spawnPacket.Player.Count}");
+
+        GameRoom gameRoom = GameRoomManager.Instance.Find(spawnPacket.RoomId);
+        if (gameRoom == null)
+            return;
+
+        
+        foreach (var protoPlayer in spawnPacket.Player)
+        {
+            Player player = new Player(protoPlayer);
+            if (serverSession.Player != null && player.PlayerId == serverSession.Player.PlayerId)
+                continue;
+
+            gameRoom.AddMessage($"{player.DisplayName}님이 입장하셨습니다.");
+        }
     }
 }

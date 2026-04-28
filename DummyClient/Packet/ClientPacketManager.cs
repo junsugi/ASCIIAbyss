@@ -32,6 +32,10 @@ public class ClientPacketManager
         _handler.Add((ushort)MsgId.SGameRoomList, PacketHandler.S_GameRoomListHandler);
         _onRecv.Add((ushort)MsgId.SCreateGameRoom, MakePacket<S_CreateGameRoom>);
         _handler.Add((ushort)MsgId.SCreateGameRoom, PacketHandler.S_CreateGameRoomHandler);
+        _onRecv.Add((ushort)MsgId.SEnterGame, MakePacket<S_EnterGame>);
+        _handler.Add((ushort)MsgId.SEnterGame, PacketHandler.S_EnterGameHandler);
+        _onRecv.Add((ushort)MsgId.SSpawn, MakePacket<S_Spawn>);
+        _handler.Add((ushort)MsgId.SSpawn, PacketHandler.S_SpawnHandler);
     }
 
     public void OnRecvPacket(PacketSession session, ArraySegment<byte> buffer)
@@ -42,6 +46,7 @@ public class ClientPacketManager
         count += 2;
         ushort id = BitConverter.ToUInt16(buffer.Array, buffer.Offset + count);
         count += 2;
+        Console.WriteLine($"OnRecvPacket id={id}, size={size}");
 
         Action<PacketSession, ArraySegment<byte>, ushort> action = null;
         if (_onRecv.TryGetValue(id, out action))
@@ -52,6 +57,7 @@ public class ClientPacketManager
     {
         T pkt = new T();
         pkt.MergeFrom(buffer.Array, buffer.Offset + 4, buffer.Count - 4);
+        Console.WriteLine($"MakePacket type={typeof(T).Name}, id={id}");
 
         Action<PacketSession, IMessage> action = null;
         if (_handler.TryGetValue(id, out action))

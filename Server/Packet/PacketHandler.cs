@@ -1,6 +1,8 @@
 using Google.Protobuf;
 using Google.Protobuf.Protocol;
+using Server.Game;
 using ServerCore;
+using Player = Server.Game.Player;
 
 namespace Server;
 
@@ -24,7 +26,11 @@ public class PacketHandler
     {
         C_EnterGame enterGamePacket = (C_EnterGame)packet;
         ClientSession clientSession = (ClientSession)session;
-        clientSession.HandleEnterGame(enterGamePacket);
+        
+        int roomId = enterGamePacket.RoomId;
+        Player player = PlayerManager.Instance.FindById(enterGamePacket.Player.Id);
+        
+        clientSession.HandleEnterGame(roomId, player);
     }
 
     public static void C_CreateGameRoomHandler(PacketSession session, IMessage packet)
