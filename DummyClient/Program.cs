@@ -14,13 +14,16 @@ class Program
         IPEndPoint endPoint = new IPEndPoint(IPAddress.Loopback, 5555);
         Connector connector = new Connector();
         ServerSession session = SessionManager.Instance.Generate();
-
+        connector.Connect(endPoint, session);
+        
         AnsiConsole.MarkupLine(ASCIIView.Instance.Logo());
         AnsiConsole.Status().Start("Loading...", ctx =>
         {
-            connector.Connect(endPoint, session);
+            
             Thread.Sleep(2000);
         });
+
+        Player player = null;
         
         if (session.IsConnected)
         {
@@ -71,7 +74,7 @@ class Program
                         // account가 Null인지 아닌지에 따라 다음 스텝
                         try
                         {
-                            Player player = await session.SignInAsync(email, password);
+                             player = await session.SignInAsync(email, password);
                             if (session.UIState == PlayerClientUIState.UiLobby)
                             {
                                 AnsiConsole.MarkupLine($"[bold blue]{player.DisplayName}[/]이 로그인 하셨습니다! \n");
@@ -80,6 +83,18 @@ class Program
                         catch (Exception e)
                         {
                             Console.WriteLine(e.Message);
+                        }
+                        break;
+                    case "방만들기" when session.UIState == PlayerClientUIState.UiLobby:
+                        string displayName = AnsiConsole.Ask<string>("[green]방 이름[/]을 입력해주세요. : ");
+                        GameRoom gameRoom = await session.CreateRoomAsync(displayName);
+                        AnsiConsole.MarkupLine($"{gameRoom.Id} / {gameRoom.displayName}");
+                        
+                        // 방 입장 뷰
+                        gameRoom = await session.EnterGame(gameRoom.Id, player);
+                        if (gameRoom != null)
+                        {
+                            ASCIIView.Instance.CreateGameRoomView(gameRoom, player);
                         }
                         break;
                     case "로비" when session.UIState == PlayerClientUIState.UiLobby:
@@ -97,13 +112,11 @@ class Program
                                     .MoreChoicesText("[grey](더 보려면 위아래로 움직이세요)[/]")
                                     .AddChoices(gameRooms.Values)
                                     .UseConverter(room => $"{room.displayName} - {room.playerCount} / 4"));
+
+                            // 방 입장 뷰
+                            gameRoom = await session.EnterGame(lobbyInput.Id, player);
+                            
                         }
-                        
-                        break;
-                    case "방만들기" when session.UIState == PlayerClientUIState.UiLobby:
-                        string displayName = AnsiConsole.Ask<string>("[green]방 이름[/]을 입력해주세요. : ");
-                        GameRoom gameRoom = await session.CreateRoomAsync(displayName);
-                        AnsiConsole.MarkupLine($"{gameRoom.Id} / {gameRoom.displayName}");
                         break;
                     case "종료":
                         AnsiConsole.MarkupLine($"게임을 [bold red]종료[/]합니다.");
