@@ -10,18 +10,17 @@ public class AccountService
     // 메모리 디비 (계정정보)
     private Dictionary<string, Account> _accounts = new Dictionary<string, Account>();
 
-    public bool SignUp(string email, string password)
+    public Account SignUp(string email, string password)
     {
         Account account = new Account(email, password);
         bool isDuplicate = _accounts.ContainsKey(account.Email);
         if (!isDuplicate)
         {
             _accounts.Add(account.Email, account);
-            PlayerManager.Instance.Add(account);
-            return true;
+            return account;
         }
         
-        return false;
+        return null;
     }
 
     public SignInResult SignIn(string email, string password)
@@ -33,7 +32,7 @@ public class AccountService
         {
             if (account.Password == password)
             {
-                Player player = PlayerManager.Instance.Find(account.Email);
+                Player player = PlayerManager.Instance.FindByEmail(account.Email);
                 result.Player = player;
                 return result;
             }
